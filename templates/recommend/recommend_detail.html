@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}    
+<div class="container my-3">
+    <h2 class="border-bottom py-2">Happy to see you, ID:{{ g.user.user_id }} :) <small> [{{ history.user_name }}] </small></h2>
+    <br>
+    <h5 class="border-bottom my-3 py-2">Recently viewed</h5>
+    <div class="row row-cols-1 row-cols-md-5 g-5">
+        {% for obj in data_list %}
+        <div class="col">   
+            <div class="card">
+                <div class="card-body"><p class="card-text"> {{ obj.item_name }} </p></div>
+                <div class="d-flex justify-content-end"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <br>
+    <h5 class="border-bottom my-3 py-2">Recommended for you (1) <small>[ by {{ reco_set.platform }} - {{ reco_set.modelType }} ]</small> </h5>
+    <div class="row row-cols-1 row-cols-md-5 g-5">
+        {% for reco in reco_list %}
+        <div class="col">   
+            <div class="card">
+                <div class="card-body"><p class="card-text"> {{ reco.item_name }} </p></div>
+                <div class="d-flex justify-content-end"></div>
+            </div>
+        </div>
+        {% endfor %}        
+    </div>
+    <br>
+    <h5 class="border-bottom my-3 py-2">Recommended for you (2) <small>[ by AWS - User personalization ]</small> </h5>
+    <div class="row row-cols-1 row-cols-md-5 g-5">
+        {% for aws in aws_list %}
+        <div class="col">   
+            <div class="card">
+                <div class="card-body"><p class="card-text"> {{ aws.item_name }} </p></div>
+                <div class="d-flex justify-content-end"></div>
+            </div>
+        </div>
+        {% endfor %}        
+    </div>
+    <br>
+    <h5 class="border-bottom my-3 py-2">Popularity </h5>
+    <div class="row row-cols-1 row-cols-md-5 g-5">
+        {% for pop in popular_list %}
+        <div class="col">   
+            <div class="card">
+                <div class="card-body"><p class="card-text"> {{ pop.item_name }} </p></div>
+                <div class="d-flex justify-content-end"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <br>
+    <br>
+    <footer class="footer">
+     <p>what-if @ digital lab 2021</p>
+    </footer>
+</div>
+{% endblock %}

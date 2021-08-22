@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-3">
+    <h2 class="border-bottom py-2">Hello, Digital Lab :)</h2>
+    <p>  </p><br>
+    <h5>Please let us know <b>USER ID</b></h5>
+        <div class="mb-3">
+            <div class="mb-3">
+            <select style="width:350px;font-size:400%;" name="selectSeg" id="selectSeg" onchange="checkChange(this)">
+                <option selected>USER SEGMENT</option>
+                <option value="1">Low views</option>
+                <option value="2">Average views</option>
+                <option value="3">High views</option>
+                <option value="4">Highly focused</option>
+                <option value="5">Diversly viewed</option>
+                <option value="6">Etc</option>
+            </select>                
+            <script language="javascript">
+            function checkChange(obj) {
+                if (obj.value==6) {
+                    document.getElementById("main").style.display="none"; 
+                    document.getElementById("etc").style.display="block"; 
+                } else {
+                    document.getElementById("main").style.display="block"; 
+                    document.getElementById("etc").style.display="none"; 
+                }
+            }
+            </script>
+            </div>
+            <div id="main" style="display:none;">
+                <form method="POST" action="{{ url_for('compare.test') }}">
+                    <select style="width:350px;font-size:200%;" name="user_id" id="user_id">
+                        <option selected>USER ID</option>
+                        {% for i in range(0,10) %}
+                        <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                    <button style="font-size:15px" type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+            <div id="etc" style="display:none;">
+                <form method="POST" action="{{ url_for('compare.test') }}">
+                    <input style="width:350px;" type="text" name="user_id" id="user_id" placeholder="USER ID (0~33631)">
+                    <button style="font-size:15px" type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+    <div class="mb-3">
+        <div><p>
+            {% if user_id == None %} 
+            <br><br>
+            <h5>The most popular items we have </h5>
+            <table class="table">
+                <tbody>
+                {% for pop in popular_list %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ pop.item_title }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <br>
+            {% else %}
+            <br>
+            <br>
+            <h5 class="border-bottom my-3 py-2">Recommended for ID:{{ user_id }} <small> [{{ history.user_name }}]</h5>
+                <div class="container my-3">
+                    <br>
+                    <div class="row">
+                        <div class="col-sm">
+                            <h5 class="border-bottom my-3 py-2">D.Lab - CF</h5>
+                            <div class="col col-rows-10">
+                            {% for reco in reco_list %}  
+                                {% if reco.is_intersection == 1 %}
+                                    <div class="card border-primary mb-3">
+                                    <div class="card-body"><h5 class="card-title"><small>{{ reco.item_title }}</small></h5></div>
+                                    <div class="d-flex justify-content-end"></div></div><br>
+                                {% else %}
+                                    <div class="card">
+                                    <div class="card-body"><h5 class="card-title"><small>{{ reco.item_title }}</small></h5></div>
+                                    <div class="d-flex justify-content-end"></div></div><br>
+                                {% endif %}
+                            {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-sm">
+                            <h5 class="border-bottom my-3 py-2">AWS personalize</h5>
+                            <div class="col col-rows-10">
+                            {% for aws in aws_list %}
+                                {% if aws.is_intersection == 1 %}
+                                    <div class="card border-primary mb-3">
+                                    <div class="card-body"><h5 class="card-title"><small>{{ aws.item_title }}</small></h5></div>
+                                    <div class="d-flex justify-content-end"></div></div><br>
+                                {% else %}
+                                    <div class="card">
+                                    <div class="card-body"><h5 class="card-title"><small>{{ aws.item_title }}</small></h5></div>
+                                    <div class="d-flex justify-content-end"></div></div><br>
+                                {% endif %}
+                            {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-sm">
+                            <h5 class="border-bottom my-3 py-2">Recently viewed</h5>
+                            <div class="col col-rows-10">
+                            {% for obj in data_list %}
+                                <div class="card">
+                                <div class="card-body"><h5 class="card-title"><small>{{ obj.item_title }}</small></h5></div>
+                                <div class="d-flex justify-content-end"></div></div><br>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <br>
+            {% endif %}
+        </p>
+    </div>
+</div>
+{% endblock %}
