@@ -1,3 +1,3 @@
 # chocopy
-#Edited on Jun-01
-#### What a sweet py-world @ digital lab 
+# 
+#### What a sweet py-world @ Data Science 3  
