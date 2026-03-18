@@ -39,6 +39,9 @@ import numpy as np
 import torch
 
 # ── logging setup ─────────────────────────────────────────────────────────────
+Path("results").mkdir(parents=True, exist_ok=True)
+Path("plots").mkdir(parents=True, exist_ok=True)
+Path("checkpoints").mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
