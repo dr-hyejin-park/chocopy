@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+checkpoints/
+plots/
+results/
+data/real_data.csv
+data/*.csv
+*.pt
+*.pkl
+*.log
+.DS_Store
