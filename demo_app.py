@@ -334,7 +334,7 @@ def main():
 
     # ── 사이드바 ───────────────────────────────────────────────────────────────
     with st.sidebar:
-        st.image("https://img.shields.io/badge/model-TabDiff-blue?style=for-the-badge", use_container_width=True)
+        st.image("https://img.shields.io/badge/model-TabDiff-blue?style=for-the-badge", use_column_width=True)
         st.markdown("### ⚙️ 설정")
 
         mask_ratio = st.selectbox(
@@ -388,7 +388,7 @@ def main():
         with col1:
             loss_img = Path("plots/training_loss.png")
             if loss_img.exists():
-                st.image(str(loss_img), use_container_width=True)
+                st.image(str(loss_img), use_column_width=True)
             else:
                 st.warning("학습 곡선 이미지가 없습니다. `run_pipeline.py`를 먼저 실행하세요.")
 
@@ -436,7 +436,7 @@ def main():
             fig_files = sorted(Path("plots").glob(f"numeric_{mask_pct}pct_fig*.png"))
             if fig_files:
                 for f in fig_files:
-                    st.image(str(f), use_container_width=True)
+                    st.image(str(f), use_column_width=True)
             else:
                 st.warning(f"plots/numeric_{mask_pct}pct_fig*.png 파일이 없습니다.")
         else:
@@ -475,7 +475,7 @@ def main():
             fig_files = sorted(Path("plots").glob(f"categorical_{mask_pct}pct_fig*.png"))
             if fig_files:
                 for f in fig_files:
-                    st.image(str(f), use_container_width=True)
+                    st.image(str(f), use_column_width=True)
             else:
                 st.warning(f"plots/categorical_{mask_pct}pct_fig*.png 파일이 없습니다.")
         else:
@@ -597,14 +597,14 @@ def main():
                 })
 
             df_summary = pd.DataFrame(summary_rows)
-            st.dataframe(df_summary, use_container_width=True, hide_index=True)
+            st.dataframe(df_summary)
 
             # ── 전체 마스킹 비율 비교 플롯 ────────────────────────────────────
             if len(all_ratios) >= 2:
                 st.markdown('<p class="section-header">마스킹 비율별 성능 비교</p>', unsafe_allow_html=True)
                 summary_img = Path("plots/metric_summary.png")
                 if summary_img.exists():
-                    st.image(str(summary_img), use_container_width=True)
+                    st.image(str(summary_img), use_column_width=True)
 
         else:
             st.warning(f"results/results_{mask_pct}pct.json 파일이 없습니다. 파이프라인을 먼저 실행하세요.")
