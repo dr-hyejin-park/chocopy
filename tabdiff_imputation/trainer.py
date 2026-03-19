@@ -9,6 +9,7 @@ Features:
 - Early stopping
 - Per-epoch validation loss logging
 """
+import copy
 import os
 import math
 import time
@@ -108,6 +109,11 @@ class TabDiffTrainer:
         if model is None:
             model = self.build_model(num_numeric, cat_vocab_sizes)
 
+        # EMA model — used for inference; shadow-copies the training model
+        ema_model = copy.deepcopy(model)
+        ema_model.eval()
+        ema_decay = 0.9999
+
         diffusion = TabDiffusion(cfg).to(self.device)
 
         optimizer = torch.optim.AdamW(
@@ -167,6 +173,11 @@ class TabDiffTrainer:
                 scaler.update()
                 scheduler.step()
 
+                # EMA update
+                with torch.no_grad():
+                    for ema_p, p in zip(ema_model.parameters(), model.parameters()):
+                        ema_p.data.mul_(ema_decay).add_(p.data, alpha=1.0 - ema_decay)
+
                 ep_loss += loss.item()
                 ep_num += loss_n.item()
                 ep_cat += loss_c.item()
@@ -175,8 +186,8 @@ class TabDiffTrainer:
             train_loss = ep_loss / n_batches
             train_losses.append(train_loss)
 
-            # ── Validation ────────────────────────────────────────────────────
-            model.eval()
+            # ── Validation (using EMA model for realistic eval quality) ────────
+            ema_model.eval()
             vl = vn = vc = 0.0
             vn_batches = 0
             with torch.no_grad():
@@ -188,7 +199,7 @@ class TabDiffTrainer:
                     with autocast(enabled=cfg.use_amp and self.device == "cuda"):
                         x_t_num, noise = diffusion.q_sample_num(x_num, t)
                         x_t_cat, keep = diffusion.q_sample_cat(x_cat, t, cat_vocab_sizes)
-                        noise_pred, logits_cat = model(x_t_num, x_t_cat, t)
+                        noise_pred, logits_cat = ema_model(x_t_num, x_t_cat, t)
                         loss, loss_n, loss_c = diffusion.compute_loss(
                             noise_pred, noise, logits_cat, x_cat, keep,
                             lambda_num=cfg.lambda_num, lambda_cat=cfg.lambda_cat,
@@ -216,6 +227,7 @@ class TabDiffTrainer:
                     {
                         "epoch": epoch,
                         "model_state": model.state_dict(),
+                        "ema_model_state": ema_model.state_dict(),
                         "optimizer_state": optimizer.state_dict(),
                         "val_loss": val_loss,
                         "num_numeric": num_numeric,
@@ -234,12 +246,13 @@ class TabDiffTrainer:
                 )
                 break
 
-        # Reload best weights
+        # Reload best weights (prefer EMA weights for inference)
         ckpt = torch.load(self.save_path, map_location=self.device, weights_only=False)
-        model.load_state_dict(ckpt["model_state"])
-        logger.info(f"Best TabDiff model reloaded (epoch {ckpt['epoch']}, val_loss={ckpt['val_loss']:.4f})")
+        ema_model.load_state_dict(ckpt.get("ema_model_state", ckpt["model_state"]))
+        ema_model.eval()
+        logger.info(f"Best EMA model reloaded (epoch {ckpt['epoch']}, val_loss={ckpt['val_loss']:.4f})")
 
-        return model, {"train_losses": train_losses, "val_losses": val_losses}
+        return ema_model, {"train_losses": train_losses, "val_losses": val_losses}
 
     # ------------------------------------------------------------------
     def load_best(self, num_numeric: int, cat_vocab_sizes: List[int]) -> TabDiffDenoiser:
@@ -254,6 +267,7 @@ class TabDiffTrainer:
             hidden_dims=saved_cfg.hidden_dims,
             dropout=saved_cfg.dropout,
         ).to(self.device)
-        model.load_state_dict(ckpt["model_state"])
+        # Prefer EMA weights for inference
+        model.load_state_dict(ckpt.get("ema_model_state", ckpt["model_state"]))
         model.eval()
         return model

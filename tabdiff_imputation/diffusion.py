@@ -171,7 +171,10 @@ class TabDiffusion:
         sqrt_ab_cur = self._sqrt_ab_num[t_cur]
         sqrt_1mab_cur = self._sqrt_1m_ab_num[t_cur]
         x0_pred = (x_t - sqrt_1mab_cur * model_out) / sqrt_ab_cur.clamp(1e-8)
-        x0_pred = x0_pred.clamp(-5.0, 5.0)
+        # After QuantileTransformer normalisation the data is ~N(0,1);
+        # clamping to ±3 covers 99.7% of the distribution and prevents
+        # extreme values from destabilising the reverse process.
+        x0_pred = x0_pred.clamp(-3.0, 3.0)
 
         sqrt_ab_next = self._sqrt_ab_num[t_next]
         sqrt_1mab_next = self._sqrt_1m_ab_num[t_next]

@@ -17,11 +17,11 @@ class TabDiffConfig:
     random_seed: int = 42
 
     # ── Model ─────────────────────────────────────────────────────────────────
-    d_embed_cat: int = 8          # embedding dim per categorical feature
+    d_embed_cat: int = 16         # embedding dim per categorical feature (↑ from 8)
     d_time: int = 128             # sinusoidal time embedding dim
     # Hidden layer sizes for the denoising MLP
     hidden_dims: List[int] = field(default_factory=lambda: [2048, 2048, 1024, 1024])
-    dropout: float = 0.0          # usually 0 for diffusion models
+    dropout: float = 0.1          # light dropout to reduce overfitting (↑ from 0.0)
 
     # ── Diffusion ─────────────────────────────────────────────────────────────
     num_timesteps: int = 1000
@@ -35,9 +35,9 @@ class TabDiffConfig:
     max_epochs: int = 500
     lr: float = 3e-4
     weight_decay: float = 1e-5
-    warmup_epochs: int = 5        # linear LR warmup
+    warmup_epochs: int = 10       # linear LR warmup (↑ from 5 for stability)
     lr_min: float = 1e-6          # cosine annealing floor
-    patience: int = 30            # early-stopping patience (epochs)
+    patience: int = 50            # early-stopping patience (↑ from 30)
     min_delta: float = 1e-4       # min val-loss improvement to reset counter
     grad_clip: float = 1.0        # gradient norm clip
     use_amp: bool = True          # automatic mixed precision (fp16)
@@ -45,7 +45,7 @@ class TabDiffConfig:
 
     # ── Loss weights ──────────────────────────────────────────────────────────
     lambda_num: float = 1.0       # weight for continuous MSE loss
-    lambda_cat: float = 1.0       # weight for categorical CE loss
+    lambda_cat: float = 2.0       # weight for categorical CE loss (↑ from 1.0)
 
     # ── CTGAN ─────────────────────────────────────────────────────────────────
     ctgan_epochs: int = 300
@@ -58,7 +58,7 @@ class TabDiffConfig:
     # ── Imputation ────────────────────────────────────────────────────────────
     mask_ratios: List[float] = field(default_factory=lambda: [0.1, 0.2, 0.3])
     n_ddim_steps: int = 100       # DDIM sampling steps (≪ T for speed)
-    n_resample: int = 3           # Repaint resampling rounds per DDIM step
+    n_resample: int = 5           # Repaint resampling rounds per DDIM step (↑ from 3)
     ctgan_nn_k: int = 5           # k for CTGAN kNN imputation
 
     # ── Paths ─────────────────────────────────────────────────────────────────
