@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, QuantileTransformer
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -44,6 +44,7 @@ class TabularPreprocessor:
         self.categorical_cols = categorical_cols
         self.label_encoders: Dict[str, LabelEncoder] = {}
         self.cat_vocab_sizes: List[int] = []
+        self.num_scaler: Optional[QuantileTransformer] = None
         self.fitted = False
 
     # ------------------------------------------------------------------
@@ -75,6 +76,19 @@ class TabularPreprocessor:
             self.label_encoders[col] = le
             self.cat_vocab_sizes.append(len(le.classes_))
 
+        # Fit QuantileTransformer on numeric features → output ~N(0,1)
+        # Diffusion models assume normalised input; this is the single most
+        # impactful fix when raw features span very different scales.
+        x_num_raw = df[self.numeric_cols].values.astype(np.float32)
+        n_quantiles = min(1000, max(10, len(df)))
+        self.num_scaler = QuantileTransformer(
+            output_distribution="normal",
+            n_quantiles=n_quantiles,
+            random_state=42,
+            subsample=max(n_quantiles, 10_000),
+        )
+        self.num_scaler.fit(x_num_raw)
+
         self.fitted = True
         return self
 
@@ -82,6 +96,9 @@ class TabularPreprocessor:
     def transform(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         assert self.fitted, "Call fit() first."
         x_num = df[self.numeric_cols].values.astype(np.float32)
+        # Apply quantile normalization so all features are ~N(0,1)
+        if self.num_scaler is not None:
+            x_num = self.num_scaler.transform(x_num).astype(np.float32)
         x_cat = np.zeros((len(df), len(self.categorical_cols)), dtype=np.int64)
         for i, col in enumerate(self.categorical_cols):
             le = self.label_encoders[col]
@@ -97,7 +114,10 @@ class TabularPreprocessor:
 
     # ------------------------------------------------------------------
     def inverse_transform_num(self, x_num: np.ndarray) -> pd.DataFrame:
-        return pd.DataFrame(x_num, columns=self.numeric_cols)
+        arr = np.asarray(x_num, dtype=np.float32)
+        if self.num_scaler is not None:
+            arr = self.num_scaler.inverse_transform(arr).astype(np.float32)
+        return pd.DataFrame(arr, columns=self.numeric_cols)
 
     def inverse_transform_cat(self, x_cat: np.ndarray) -> pd.DataFrame:
         df = pd.DataFrame()

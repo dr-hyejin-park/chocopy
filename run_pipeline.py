@@ -39,6 +39,9 @@ import numpy as np
 import torch
 
 # ── logging setup ─────────────────────────────────────────────────────────────
+Path("results").mkdir(parents=True, exist_ok=True)
+Path("plots").mkdir(parents=True, exist_ok=True)
+Path("checkpoints").mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -157,6 +160,11 @@ def main():
     numeric_cols = preprocessor.numeric_cols
     categorical_cols = preprocessor.categorical_cols
 
+    # Raw (original-scale) numeric arrays — used for CTGAN and final evaluation.
+    # preprocessor.transform() now applies QuantileTransformer, so we invert here.
+    x_num_train_raw = preprocessor.inverse_transform_num(x_num_train).values.astype(np.float32)
+    x_num_test_raw  = preprocessor.inverse_transform_num(x_num_test).values.astype(np.float32)
+
     logger.info(
         f"Data split → Train: {len(x_num_train)}, Val: {len(x_num_val)}, Test: {len(x_num_test)}"
     )
@@ -203,8 +211,9 @@ def main():
     else:
         logger.info("Training CTGAN …")
         t0 = time.time()
+        # CTGAN receives raw-scale data (it applies its own VGM normalisation)
         ctgan_trainer.train(
-            x_num_train, x_cat_train, numeric_cols, categorical_cols
+            x_num_train_raw, x_cat_train, numeric_cols, categorical_cols
         )
         logger.info(f"CTGAN training done in {(time.time()-t0)/60:.1f} min")
 
@@ -226,40 +235,51 @@ def main():
         logger.info(f"  Mask ratio: {ratio_pct}%")
         logger.info(f"{'─'*50}")
 
-        # Apply masking
+        # ── Apply masking ─────────────────────────────────────────────────────
+        # Masking is applied to *normalised* test data (x_num_test) for TabDiff,
+        # and to raw test data for CTGAN.  Both use the same boolean mask so the
+        # evaluation targets the same positions.
         x_num_masked, x_cat_masked, mask_num, mask_cat = apply_masking(
             x_num_test, x_cat_test, mask_ratio, cat_vocab_sizes, rng=rng
         )
+        # Raw masked version (same mask, raw scale) for CTGAN
+        x_num_masked_raw = x_num_test_raw.copy()
+        x_num_masked_raw[mask_num] = np.nan
 
-        # ── TabDiff imputation ────────────────────────────────────────────────
+        # ── TabDiff imputation (normalised space) ─────────────────────────────
         logger.info("Running TabDiff imputation …")
         t0 = time.time()
-        x_num_td, x_cat_td = tabdiff_imputer.impute(
+        x_num_td_norm, x_cat_td = tabdiff_imputer.impute(
             x_num_masked, x_cat_masked, mask_num, mask_cat,
             chunk_size=chunk_size,
         )
         logger.info(f"  TabDiff imputation: {time.time()-t0:.1f}s")
 
-        # ── CTGAN imputation ──────────────────────────────────────────────────
+        # Inverse-transform TabDiff output to raw scale for evaluation
+        x_num_td = preprocessor.inverse_transform_num(x_num_td_norm).values.astype(np.float32)
+        # Restore observed values exactly (raw scale)
+        x_num_td[~mask_num] = x_num_test_raw[~mask_num]
+
+        # ── CTGAN imputation (raw scale) ──────────────────────────────────────
         logger.info("Running CTGAN imputation …")
         t0 = time.time()
         x_num_cg, x_cat_cg = ctgan_trainer.impute(
-            x_num_masked, x_cat_masked, mask_num, mask_cat,
+            x_num_masked_raw, x_cat_masked, mask_num, mask_cat,
             cat_vocab_sizes, numeric_cols, categorical_cols,
             n_synthetic=max(len(x_num_test) * 10, 2000),
             k=cfg.ctgan_nn_k,
         )
         logger.info(f"  CTGAN imputation: {time.time()-t0:.1f}s")
 
-        # ── Evaluate ──────────────────────────────────────────────────────────
+        # ── Evaluate both in raw scale ────────────────────────────────────────
         res_td = evaluate_imputation(
-            x_num_test, x_cat_test,
+            x_num_test_raw, x_cat_test,
             x_num_td, x_cat_td,
             mask_num, mask_cat,
             cat_vocab_sizes, numeric_cols, categorical_cols,
         )
         res_cg = evaluate_imputation(
-            x_num_test, x_cat_test,
+            x_num_test_raw, x_cat_test,
             x_num_cg, x_cat_cg,
             mask_num, mask_cat,
             cat_vocab_sizes, numeric_cols, categorical_cols,
@@ -280,7 +300,7 @@ def main():
         logger.info("Generating per-feature plots …")
 
         plot_numeric_features(
-            x_num_test, x_num_td, x_num_cg,
+            x_num_test_raw, x_num_td, x_num_cg,
             mask_num, numeric_cols, mask_ratio,
             cfg.plot_dir,
             max_features=cfg.max_plot_features,
