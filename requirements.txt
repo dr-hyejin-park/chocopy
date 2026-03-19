@@ -1,0 +1,25 @@
+# TabDiff Imputation — Python 3.7 호환 의존성
+# Install: pip install -r requirements.txt
+
+# Core ML (Python 3.7 last-supported versions)
+torch>=1.13.1,<2.1.0
+numpy>=1.21.0,<1.25.0
+scipy>=1.7.0,<1.11.0
+scikit-learn>=0.24.0,<1.3.0
+
+# Data
+pandas>=1.3.0,<2.0.0
+
+# Generative models
+ctgan>=0.7.0,<0.10.0
+sdv>=0.18.0,<1.0.0
+
+# Visualization
+matplotlib>=3.5.0,<3.8.0
+seaborn>=0.11.0,<0.13.0
+
+# Progress & utilities
+tqdm>=4.62.0
+
+# Web app
+streamlit>=1.10.0,<1.29.0
