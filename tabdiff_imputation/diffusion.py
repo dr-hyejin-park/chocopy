@@ -286,6 +286,9 @@ class TabDiffusion:
                         x_cat[:, _i].clamp_(0, _C)
                     model.eval()
                     noise_pred, logits_list = model(x_num, x_cat, t_tensor)
+                    # Prevent NaN model outputs from propagating; replace with
+                    # zero noise (no-op denoising step) rather than crashing.
+                    noise_pred = noise_pred.nan_to_num(0.0)
 
                     # ── Reverse step ───────────────────────────────────────
                     x_num_prev = self.ddim_step_num(
