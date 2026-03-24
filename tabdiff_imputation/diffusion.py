@@ -181,10 +181,10 @@ class TabDiffusion:
 
         # Direction pointing to x_t
         sigma = eta * (
-            (1 - ab_next) / (1 - ab_cur).clamp(1e-8) * (1 - ab_cur / ab_next.clamp(1e-8))
-        ).sqrt().clamp(0.0)
+            (1 - ab_next) / (1 - ab_cur).clamp(min=1e-8) * (1 - ab_cur / ab_next.clamp(min=1e-8))
+        ).clamp(min=0.0).sqrt()
 
-        dir_xt = (1 - ab_next - sigma ** 2).sqrt().clamp(0.0) * model_out
+        dir_xt = (1 - ab_next - sigma ** 2).clamp(min=0.0).sqrt() * model_out
         noise = torch.randn_like(x_t) if eta > 0 else 0.0
 
         x_next = sqrt_ab_next * x0_pred + dir_xt + sigma * noise
