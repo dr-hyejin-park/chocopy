@@ -212,6 +212,10 @@ class TabDiffusion:
                 continue
             # Sample x0 from predicted logits (true classes only, not MASK)
             probs = torch.softmax(logits[:, :C], dim=-1)   # [B, C]
+            # Guard: NaN probs (from -inf logits) or all-zero rows crash
+            # torch.multinomial with a CUDA device-side assert that is then
+            # reported asynchronously at the next embedding lookup.
+            probs = probs.nan_to_num(nan=1.0 / max(C, 1)).clamp(min=1e-8)
             x0_sampled = torch.multinomial(probs, 1).squeeze(-1)  # [B]
 
             # With probability ab_next keep the sample, else re-mask
@@ -276,8 +280,15 @@ class TabDiffusion:
 
                 for resample_idx in range(n_resample):
                     # ── Model forward ──────────────────────────────────────
+                    # Clamp x_cat to valid embedding range [0, C_i] before
+                    # every model call to prevent OOB from Repaint/re-noise.
+                    for _i, _C in enumerate(cat_vocab_sizes):
+                        x_cat[:, _i].clamp_(0, _C)
                     model.eval()
                     noise_pred, logits_list = model(x_num, x_cat, t_tensor)
+                    # Prevent NaN model outputs from propagating; replace with
+                    # zero noise (no-op denoising step) rather than crashing.
+                    noise_pred = noise_pred.nan_to_num(0.0)
 
                     # ── Reverse step ───────────────────────────────────────
                     x_num_prev = self.ddim_step_num(
