@@ -390,11 +390,11 @@ def plot_metric_summary(
 
     for ax, metric in zip(axes, all_metrics):
         td_vals = [
-            results_by_ratio[r]["tabdiff"]["summary"].get(metric)
+            results_by_ratio[r]["tabdiff"]["summary"].get(metric) or 0.0
             for r in ratios
         ]
         cg_vals = [
-            results_by_ratio[r]["ctgan"]["summary"].get(metric)
+            results_by_ratio[r]["ctgan"]["summary"].get(metric) or 0.0
             for r in ratios
         ]
 
